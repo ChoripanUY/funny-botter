@@ -178,6 +178,10 @@ async def help_command(ctx):
     embed.add_field(name= "/help", value="Get a list of all available commands")
     embed.add_field(name= "/rock_paper_scissors", value="Play rock paper scissors with the bot")
     embed.add_field(name= "/random_meme", value="Get a random meme from Reddit")
+    embed.add_field(name= "/work", value="Work for me!")
+    embed.add_field(name= "/crime", value="Commit a crime")
+    embed.add_field(name= "/balance", value="Check your balance")
+    embed.add_field(name= "/gamble", value="Gamble with your money! $30 Skibidi Coins minimum")
     
     await ctx.send(embed=embed)
 
