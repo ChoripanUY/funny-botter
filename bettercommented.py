@@ -1,5 +1,5 @@
 # Importing necessary libraries
-import requests, os, discord, random, json, asyncpraw
+import requests, os, discord, random, json, asyncpraw, giphypop, math
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -7,39 +7,30 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Define the filenames
-rps_filename = "rps.json"
-economy_filename = "economy.json"
+data_file = "data.json"
 
 # Create the rock paper scissors data file if it doesn't exist
-if not os.path.exists(rps_filename):
-    with open(rps_filename, "w") as f:
-        json.dump({}, f)
-
-# Create the economy data file if it doesn't exist
-if not os.path.exists(economy_filename):
-    with open(economy_filename, "w") as f:
+if not os.path.exists(data_file):
+    with open(data_file, "w") as f:
         json.dump({}, f)
 
 # Function to load rock paper scissors game data from file
 def load_data():
-    with open(rps_filename, "r") as f:
+    with open(data_file, "r") as f:
         return json.load(f)
 
 # Function to save rock paper scissors game data to file
 def save_data(data):
-    with open(rps_filename, "w") as f:
-        json.dump(data, f, indent=4)
-
-def load_economy():
-    with open(economy_filename, "r") as f:
-        return json.load(f)
-
-def save_economy(data):
-    with open(economy_filename, "w") as f:
+    with open(data_file, "w") as f:
         json.dump(data, f, indent=4)
 
 # Create Discord bot instance with all intents and set command prefix
 bot = commands.Bot(command_prefix="Mr!", intents=discord.Intents.all())
+
+g = giphypop.Giphy(
+    api_key=os.getenv("GIPHY_KEY"),
+    strict=True
+)
 
 # Event handler for when the bot is ready
 @bot.event
@@ -54,22 +45,14 @@ async def on_ready():
     client_secret=os.getenv("CLIENT_SECRET"),
     user_agent=os.getenv("USER_AGENT")
     )
+    
 # Event handler to close the Reddit requestor
 @bot.event
 async def on_close():
     await myReddit.close()
 
 # Error handling for various command errors
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.errors.CommandNotFound):
-        await ctx.send("That command does not exist")
-    elif isinstance(error, commands.errors.MissingPermissions):
-        await ctx.send("You do not have permissions to use this command")
-    elif isinstance(error, commands.errors.MemberNotFound):
-        await ctx.send("That member does not exist")
-    elif isinstance(error, commands.errors.CommandOnCooldown):
-        await ctx.send(f"This command is on cooldown. Please try again in {error.retry_after:.2f} seconds")
+
 
 # Command to insult a user
 @commands.cooldown(1, 3, commands.BucketType.guild)
@@ -163,7 +146,7 @@ async def rand_meme(ctx):
 # Command to display information about the bot's commands
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="bot_help", description="Get a list of all available commands")
-async def help_command(ctx):
+async def help_command(ctx: commands.Context):
     # Create the embed with command information
     embed = discord.Embed(
         title="Commands:",
@@ -181,8 +164,11 @@ async def help_command(ctx):
     embed.add_field(name= "/work", value="Work for me!")
     embed.add_field(name= "/crime", value="Commit a crime")
     embed.add_field(name= "/balance", value="Check your balance")
-    embed.add_field(name= "/gamble", value="Gamble with your money! $30 Skibidi Coins minimum")
-    
+    embed.add_field(name= "/gamble", value="Gamble with your money! $30 SK minimum This bot's currency is called **Skibidirians** (SK)")
+    embed.add_field(name= "/leaderboard", value="Check the leaderboard")
+    embed.add_field(name= "/daily", value="Get your daily allowance!")
+    embed.add_field(name="/rob", value="Try to rob someone!")
+        
     await ctx.send(embed=embed)
 
 # Command to play rock paper scissors with the bot
@@ -194,7 +180,7 @@ async def help_command(ctx):
     discord.app_commands.Choice(name="Paper", value="paper"),
     discord.app_commands.Choice(name="Scissors", value="scissors")
 ])
-async def rock_paper_scissors(ctx, choice: str):
+async def rock_paper_scissors(ctx: commands.Context, choice: str):
     # Bot makes a random choice
     bot_choice = random.choice(["rock", "paper", "scissors"])
     user_choice = choice.lower()
@@ -208,8 +194,15 @@ async def rock_paper_scissors(ctx, choice: str):
     if user_id not in data:
         data[user_id] = {"wins": 0, "losses": 0}
 
+    if "wins" not in data[user_id]:
+        data[user_id]["wins"] = 0
+    if "losses" not in data[user_id]:
+        data[user_id]["losses"] = 0
+
     # Determine the winner and update scores
-    if (user_choice == "rock" and bot_choice == "scissors") or \
+    if user_choice == bot_choice:
+        result = f"It's a tie! We both chose {bot_choice}."
+    elif (user_choice == "rock" and bot_choice == "scissors") or \
    (user_choice == "paper" and bot_choice == "rock") or \
    (user_choice == "scissors" and bot_choice == "paper"):
         result = f"You win! You chose {user_choice}, and I chose {bot_choice}."
@@ -226,9 +219,9 @@ async def rock_paper_scissors(ctx, choice: str):
     
 @commands.cooldown(1, 900, commands.BucketType.user)
 @bot.hybrid_command(name="work", description="Work for me!")
-async def work(ctx):
+async def work(ctx: commands.Context):
     user_id = str(ctx.author.id)
-    data = load_economy()
+    data = load_data()
 
     phrases = [
     f"{ctx.author.mention} has worked as a cashier and earned",
@@ -248,9 +241,10 @@ async def work(ctx):
     f"{ctx.author.mention} did some gardening work and collected"
     ]
 
-
     if not user_id in data:
         data[user_id] = {"money": 0}
+    elif "money" not in data[user_id]:
+        data[user_id]["money"] = 0
     
     randphrase = random.choice(phrases)
     added_money = random.randint(120, 450)
@@ -258,17 +252,20 @@ async def work(ctx):
 
     embed = discord.Embed(
         title="You worked!",
-        description=f"{randphrase} ${added_money} **Skibidi Coins**",
+        description=f"{randphrase} ${added_money} **SK**",
         colour=discord.Colour.dark_green()
     )
-    save_economy(data)
+    gif = g.random_gif(tag="work")
+    embed.set_image(url=gif.media_url)
     await ctx.send(embed=embed)
+
+    save_data(data)
 
 @commands.cooldown(1, 1200, commands.BucketType.user)
 @bot.hybrid_command(name="crime", description="Commit a crime for money!")
-async def crime(ctx):
+async def crime(ctx: commands.Context):
     user_id = str(ctx.author.id)
-    data = load_economy()
+    data = load_data()
 
     success_phrases = [
     f"{ctx.author.mention} pulled off a daring heist and got away with",
@@ -308,6 +305,8 @@ async def crime(ctx):
 
     if not user_id in data:
         data[user_id] = {"money": 0}
+    elif "money" not in data[user_id]:
+        data[user_id]["money"] = 0
 
     if random.randint(1, 100) <= 65:
         amount = random.randint(120, 450) * 3
@@ -322,44 +321,53 @@ async def crime(ctx):
     
     embed = discord.Embed(
         title="You committed a crime!",
-        description=f"{phrase} ${amount} **Skibidi Coins**",
+        description=f"{phrase} ${amount} **SK**",
         colour=colour
     )
-    save_economy(data)
+    gif = g.random_gif(tag="burglar")
+    embed.set_image(url=gif.media_url)
     await ctx.send(embed=embed)
+
+    save_data(data)
 
 @commands.cooldown(1, 60, commands.BucketType.user)
 @bot.hybrid_command(name="balance", description="Check your balance!")
-async def balance(ctx):
+async def balance(ctx: commands.Context):
     user_id = str(ctx.author.id)
-    data = load_economy()
+    data = load_data()
 
     if not user_id in data:
         data[user_id] = {"money": 0}
+    elif "money" not in data[user_id]:
+        data[user_id]["money"] = 0
 
+    phrase = f"You have ${data[user_id]['money']} **SK**"
     embed = discord.Embed(
         title="Your balance",
-        description=f"You have ${data[user_id]['money']} **Skibidi Coins**",
+        description=phrase,
         colour=discord.Colour.dark_green()
     )
+    embed.set_image(url=ctx.author.display_avatar.url)
     await ctx.send(embed=embed)
 
 @commands.cooldown(1, 300, commands.BucketType.user)
-@bot.hybrid_command(name="gamble", description="Gamble your $Skibidi Coins!")
+@bot.hybrid_command(name="gamble", description="Gamble your $SK!")
 @discord.app_commands.describe(
     choice="Choose between Skibidi Toilet or Titan Speakerman",
-    amount="The amount of Skibidi Coins you want to gamble"
+    amount="The amount of SK you want to gamble"
 )
 @discord.app_commands.choices(choice=[
     discord.app_commands.Choice(name="Skibidi Toilet", value=1),
     discord.app_commands.Choice(name="Titan Speakerman", value=2)
 ])
-async def gamble(ctx, choice: discord.app_commands.Choice[int], amount: int):
+async def gamble(ctx: commands.Context, choice: discord.app_commands.Choice[int], amount: int):
     user_id = str(ctx.author.id)
-    data = load_economy()
-
+    data = load_data()
+    
     if user_id not in data:
         data[user_id] = {"money": 0}
+    elif "money" not in data[user_id]:
+        data[user_id]["money"] = 0
 
     if data[user_id]["money"] == 0 or amount > data[user_id]["money"]:
         await ctx.send("You do not have enough money to gamble!")
@@ -372,14 +380,150 @@ async def gamble(ctx, choice: discord.app_commands.Choice[int], amount: int):
     result = random.randint(1, 2)
 
     if choice.value == result:
-        await ctx.send(f"You win! You get ${amount * 2} Skibidi Coins")
+        phrase = f"You win! You get ${amount * 2} SK"
+        colour = discord.Colour.brand_green()
         data[user_id]["money"] += amount * 2
+        tag = "money"
     else:
-        await ctx.send(f"You lost and the house takes ur ${amount} Skibidi Coins")
+        phrase = f"You lost and the house takes ur ${amount} SK"
+        colour = discord.Colour.brand_red()
         data[user_id]["money"] -= amount
-
-    save_economy(data)  # Don't forget to save the updated economy data
-
+        tag = "broke"
     
+    gif = g.random_gif(tag=tag)
+
+    embed = discord.Embed(
+        title="Gambling results...",
+        description=phrase,
+        colour=colour
+    )
+    embed.set_image(url=gif.media_url)
+    await ctx.send(embed=embed)
+    save_data(data)  # Don't forget to save the updated economy data
+
+@commands.cooldown(1, 86400, commands.BucketType.user)
+@bot.hybrid_command(name="daily", description="Get your daily $SK allowance!")
+async def daily(ctx: commands.Context):
+    user_id = str(ctx.author.id)
+    data = load_data()
+
+    if not user_id in data:
+        data[user_id] = {"money": 0}
+    elif "money" not in data[user_id]:
+        data[user_id]["money"] = 0
+
+    allowance = random.randint(120, 450) 
+    data[user_id]["money"] += allowance
+
+    embed = discord.Embed(
+        title="Daily allowance",
+        description=f"You have received ${allowance} SK",
+        colour=discord.Colour.from_rgb(60, 176, 67)
+    )
+    tag = "money allowance"
+    gif = g.random_gif(tag=tag)
+    embed.set_image(url=gif.media_url)
+
+    await ctx.send(embed=embed)
+    save_data(data)
+
+@commands.cooldown(1, 20, commands.BucketType.guild)
+@bot.hybrid_command(name="leaderboard", description="Check the leaderboard!")
+async def leaderboard(ctx: commands.Context):
+    data = load_data()
+    guild_members = ctx.guild.members
+    guild_data = []
+
+    # Create list of members and their money
+    for member in guild_members:
+        user_id = str(member.id)
+        if user_id in data and "money" in data[user_id]:
+            guild_data.append((member, data[user_id]["money"]))
+    
+    # Sort by money (highest to lowest)
+    guild_data.sort(key=lambda x: x[1], reverse=True)
+
+    # Get top 10
+    top_10 = guild_data[:10]
+
+    if not top_10:
+        await ctx.send("Everyone is broke here!")
+        return
+    
+    embed = discord.Embed(
+        title=f"{ctx.guild.name}'s spoiled brats 🤑🤑🤑:",
+        colour=discord.Colour.from_rgb(63, 122, 77)
+    )
+
+    for index, (member, money) in enumerate(top_10, start=1):
+        embed.add_field(
+            name=f"{index}. {member.name}",
+            value=f"${money} **SK**",
+            inline=False
+        )
+
+    await ctx.send(embed=embed)
+
+@commands.cooldown(1, 18000, commands.BucketType.user)
+@bot.hybrid_command(name="rob", description="Try to rob another user")
+async def rob(ctx: commands.Context, target: discord.User):
+    user_id = str(ctx.author.id)
+    target_id = str(target.id)
+    data = load_data()
+
+    if user_id not in data:
+        data[user_id] = {"money": 0}
+    elif "money" not in data[user_id]:
+        data[user_id]["money"] = 0
+
+    if target_id not in data:
+        data[target_id] = {"money": 0}
+        await ctx.send(f"{target.mention} has no money that you can rob!")
+        return
+    
+    if data[target_id]["money"] < 100:
+        await ctx.send(f"{target.mention} is too poor!")
+        return
+    
+    if user_id == target_id:
+        await ctx.send("You can't rob yourself, you dummy!")
+        return
+    
+    chance = random.randint(1, 100)
+
+    if chance <= 40:
+        target_money = data[target_id]["money"]
+        if target_money <= 1000:
+            steal_percentage = random.uniform(0.1, 0.2)
+        elif target_money <= 5000:
+            steal_percentage = random.uniform(0.15, 0.25)
+        else:
+            steal_percentage = random.uniform(0.2, 0.3)
+
+        steal_amount = int(target_money * steal_percentage)
+
+        data[user_id]["money"] += steal_amount
+        data[target_id]["money"] -= steal_amount
+        embed = discord.Embed(
+            title="Successful robbery!",
+            description=f"You robbed {target.mention} and got away with ${steal_amount} SK!",
+            colour=discord.Colour.from_rgb(144, 238, 144)
+        )
+        gif = g.random_gif(tag="robber")
+        embed.set_image(url=gif.media_url)
+    else:
+        fine_amount = int(data[user_id]["money"] * 0.1)
+        data[user_id]["money"] -= fine_amount
+
+        embed = discord.Embed(
+            title="Failed robbery!",
+            description=f"You were caught trying to rob {target.mention} and the Skibidi Police made you pay a fine of ${fine_amount} SK!",
+            colour=discord.Colour.dark_red()
+        )
+        gif = g.random_gif(tag="arrested")
+        embed.set_image(url=gif.media_url)
+
+    await ctx.send(embed=embed)
+    save_data(data)
 # Run the bot using the API key from the .env file
 bot.run(os.getenv("API_KEY"))
