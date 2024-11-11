@@ -491,7 +491,7 @@ async def rob(ctx: commands.Context, target: discord.User):
     
     chance = random.randint(1, 100)
 
-    if chance <= 40:
+    if chance < 40:
         target_money = data[target_id]["money"]
         if target_money <= 1000:
             steal_percentage = random.uniform(0.1, 0.2)
