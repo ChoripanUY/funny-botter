@@ -512,7 +512,7 @@ async def rob(ctx: commands.Context, target: discord.User):
         gif = g.random_gif(tag="robber")
         embed.set_image(url=gif.media_url)
     else:
-        fine_amount = int(data[user_id]["money"] * 0.1)
+        fine_amount = int(data[user_id]["money"] * 0.05)
         data[user_id]["money"] -= fine_amount
 
         embed = discord.Embed(
