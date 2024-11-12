@@ -120,6 +120,13 @@ async def yesno(ctx: commands.Context, *, question: str):
         await ctx.send(message)
         await ctx.send(response["image"])
 
+@commands.cooldown(1, 3, commands.BucketType.guild)
+@bot.hybrid_command(name="useless_fact", description="Learn a random fact")
+async def useless_fact(ctx: commands.Context):
+    response = requests.get("https://uselessfacts.jsph.pl/random.json?language=en").json()
+
+    await ctx.send(response["text"])
+
 # Command to get a random meme from Reddit
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="random_meme", description="Get a random meme from Reddit")
@@ -216,7 +223,11 @@ async def rock_paper_scissors(ctx: commands.Context, choice: str):
 
     # Send the result and current score
     await ctx.send(f"{result} Your current score: Wins: {data[user_id]['wins']}, Losses: {data[user_id]['losses']}")
-    
+
+"""
+    Here start all the economy commands
+    Yummers 🤑🤑🤑
+"""
 @commands.cooldown(1, 900, commands.BucketType.user)
 @bot.hybrid_command(name="work", description="Work for me!")
 async def work(ctx: commands.Context):
