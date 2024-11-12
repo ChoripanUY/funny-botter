@@ -93,7 +93,7 @@ async def chuck_norris(ctx: commands.Context):
 # Command to get a random dad joke
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="dad_joke", description="Say a random dad joke. You will die")
-async def dad(ctx):
+async def dad(ctx: commands.Context):
     url = "https://icanhazdadjoke.com/"
     headers = {
         "Accept" : "application/json"
