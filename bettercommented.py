@@ -52,8 +52,8 @@ async def on_close():
     await myReddit.close()
 
 # Error handling for various command errors
-@bot.on_error
-async def on_command_error(ctx, error):
+@bot.event
+async def on_command_error(ctx: commands.Context, error):
     if isinstance(error, commands.CommandOnCooldown):
         await ctx.send(f"Please wait {error.retry_after:.2f} seconds before using this command again.")
     elif isinstance(error, commands.MissingRequiredArgument):
