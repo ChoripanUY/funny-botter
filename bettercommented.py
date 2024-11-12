@@ -52,7 +52,20 @@ async def on_close():
     await myReddit.close()
 
 # Error handling for various command errors
-
+@bot.on_error
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"Please wait {error.retry_after:.2f} seconds before using this command again.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Please provide all required arguments.")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send("Please provide valid arguments.")
+    elif isinstance(error, commands.CommandNotFound):
+        await ctx.send("Command not found.")
+    elif isinstance(error, commands.CommandInvokeError):
+        await ctx.send("An error occurred while executing the command.")
+    else:
+        await ctx.send("An error occurred.")
 
 # Command to insult a user
 @commands.cooldown(1, 3, commands.BucketType.guild)
