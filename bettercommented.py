@@ -57,7 +57,7 @@ async def on_close():
 # Command to insult a user
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @discord.app_commands.describe(user="The user you want to insult")
-async def quote(ctx, user: discord.User):
+async def quote(ctx: commands.Context, user: discord.User):
     # Fetch a random insult from the API
     response = requests.get("https://evilinsult.com/generate_insult.php?lang=en&type=json").json()
 
@@ -75,7 +75,7 @@ async def quote(ctx, user: discord.User):
 # Command to get a random number fact
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="number", description="Say a random fact about a random number")
-async def num(ctx):
+async def num(ctx: commands.Context):
     # Choose a random number fact category and fetch the fact from the API
     url = requests.get("http://numbersapi.com/random/" + random.choice(["math?json", "trivia?json", "year?json"]))
     response = url.json()
@@ -85,7 +85,7 @@ async def num(ctx):
 # Command to get a random Chuck Norris fact
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="chuck_norris", description="Say a random fact about Chuck Norris 👀")
-async def chuck_norris(ctx):
+async def chuck_norris(ctx: commands.Context):
     response = requests.get("https://api.chucknorris.io/jokes/random").json()
 
     await ctx.send(response["value"])
@@ -106,7 +106,7 @@ async def dad(ctx):
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="yes_or_no", description="The bot will answer yes or no")
 @discord.app_commands.describe(question="The question you want to ask the bot. The answer will be either yes or no")
-async def yesno(ctx, *, question: str):
+async def yesno(ctx: commands.Context, *, question: str):
     # Fetch a yes/no response with an image
     response = requests.get("https://yesno.wtf/api").json()
 
@@ -123,7 +123,7 @@ async def yesno(ctx, *, question: str):
 # Command to get a random meme from Reddit
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="random_meme", description="Get a random meme from Reddit")
-async def rand_meme(ctx):
+async def rand_meme(ctx: commands.Context):
     mySubreddits = ["memes", "dankmemes", "blursedimages", "funny", "TikTokCringe", "BlackPeopleTwitter", "me_irl", "193"]
 
     subreddit = await myReddit.subreddit(random.choice(mySubreddits))
@@ -525,5 +525,6 @@ async def rob(ctx: commands.Context, target: discord.User):
 
     await ctx.send(embed=embed)
     save_data(data)
+
 # Run the bot using the API key from the .env file
 bot.run(os.getenv("API_KEY"))
