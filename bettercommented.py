@@ -491,7 +491,7 @@ async def rob(ctx: commands.Context, target: discord.User):
     
     chance = random.randint(1, 100)
 
-    if chance <= 40:
+    if chance < 40:
         target_money = data[target_id]["money"]
         if target_money <= 1000:
             steal_percentage = random.uniform(0.1, 0.2)
@@ -512,7 +512,7 @@ async def rob(ctx: commands.Context, target: discord.User):
         gif = g.random_gif(tag="robber")
         embed.set_image(url=gif.media_url)
     else:
-        fine_amount = int(data[user_id]["money"] * 0.1)
+        fine_amount = int(data[user_id]["money"] * 0.05)
         data[user_id]["money"] -= fine_amount
 
         embed = discord.Embed(
