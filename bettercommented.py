@@ -32,6 +32,71 @@ g = giphypop.Giphy(
     strict=True
 )
 
+class TriviaView(discord.ui.View):
+    def __init__(self, author):
+        super().__init__(timeout=30)
+        self.message = None
+        self.answered = False
+        self.correct_answer = None
+        self.correct_answer_index = None
+        self.author = author
+
+    @discord.ui.button(label="A", style=discord.ButtonStyle.blurple)
+    async def button_a(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_answer(interaction, 0)
+
+    @discord.ui.button(label="B", style=discord.ButtonStyle.blurple)
+    async def button_b(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_answer(interaction, 1)
+
+    @discord.ui.button(label="C", style=discord.ButtonStyle.blurple)
+    async def button_c(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_answer(interaction, 2)
+
+    @discord.ui.button(label="D", style=discord.ButtonStyle.blurple)
+    async def button_d(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_answer(interaction, 3)
+
+    async def handle_answer(self, interaction: discord.Interaction, choice_index: int):
+        if interaction.user != self.author:
+            await interaction.response.send_message("Only the person who sent the command can answer!", ephemeral=True)
+            return
+
+        if self.answered:
+            await interaction.response.send_message("This question has already been answered!", ephemeral=True)
+            return
+        
+        self.answered = True
+        
+        for idx, button in enumerate(self.children):
+            button.disabled = True
+            if idx == self.correct_answer_index:
+                button.style = discord.ButtonStyle.green
+            elif idx == choice_index and choice_index != self.correct_answer_index:
+                button.style = discord.ButtonStyle.red
+        
+        await self.message.edit(view=self)
+
+        if choice_index == self.correct_answer_index:
+            await interaction.response.send_message(f"👍 That is correct! The right answer was {self.correct_answer}")
+        else:
+            await interaction.response.send_message(f"❌ That is incorrect! The right answer was {self.correct_answer}")
+        
+        answeredEmbed = discord.Embed(
+            title="Trivia",
+            description=f"Answered by {interaction.user.mention}",
+            color=discord.Color.green()
+        )
+
+        await self.message.edit(embed=answeredEmbed)
+        
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        
+        if self.message:
+            await self.message.edit(view=self)
+
 # Event handler for when the bot is ready
 @bot.event
 async def on_ready():
@@ -163,6 +228,46 @@ async def rand_meme(ctx: commands.Context):
 
     await ctx.send(embed=embed)
 
+@commands.cooldown(1, 3, commands.BucketType.guild)
+@bot.hybrid_command(name="trivia", description="Get a random trivia question! Choose between easy, medium and hard difficulty")
+@discord.app_commands.describe(difficulty="Choose the difficulty of the question")
+@discord.app_commands.choices(difficulty=[
+    discord.app_commands.Choice(name="Easy", value="easy"),
+    discord.app_commands.Choice(name="Medium", value="medium"),
+    discord.app_commands.Choice(name="Hard", value="hard")
+])
+async def trivia(ctx: commands.Context, difficulty: discord.app_commands.Choice[str]):
+    url = f"https://opentdb.com/api.php?amount=1&difficulty={difficulty.value}&type=multiple"
+    response = requests.get(url).json()
+    if response["response_code"] != 0 or not response["results"]:
+        await ctx.send("Couldnt fetch trivia question, please try again later!")
+        return
+    
+    question_data = response["results"][0]
+    question = question_data["question"]
+    correct_answer = question_data["correct_answer"]
+    incorrect_answers = question_data["incorrect_answers"]
+
+    answers = incorrect_answers + [correct_answer]
+    random.shuffle(answers)
+
+    embed = discord.Embed(
+        title="Trivia Question",
+        description=question,
+        colour=discord.Colour.random()
+    )
+    embed.add_field(name="A)", value=answers[0], inline=False)
+    embed.add_field(name="B)", value=answers[1], inline=False)
+    embed.add_field(name="C)", value=answers[2], inline=False)
+    embed.add_field(name="D)", value=answers[3], inline=False)
+
+    view = TriviaView(ctx.author)
+
+    correct_index = answers.index(correct_answer)
+    view.correct_answer_index = correct_index
+    view.correct_answer = correct_answer
+    view.message = await ctx.send(embed=embed, view=view)
+
 # Command to display information about the bot's commands
 @commands.cooldown(1, 3, commands.BucketType.guild)
 @bot.hybrid_command(name="bot_help", description="Get a list of all available commands")
@@ -236,6 +341,10 @@ async def rock_paper_scissors(ctx: commands.Context, choice: str):
 
     # Send the result and current score
     await ctx.send(f"{result} Your current score: Wins: {data[user_id]['wins']}, Losses: {data[user_id]['losses']}")
+
+"""
+    I STILL WANT TO DO HANGMAN RAAAAHHH
+"""
 
 """
     Here start all the economy commands
